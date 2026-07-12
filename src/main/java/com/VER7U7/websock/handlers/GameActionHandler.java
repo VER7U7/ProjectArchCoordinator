@@ -6,7 +6,8 @@ import org.springframework.web.socket.WebSocketSession;
 public interface GameActionHandler {
     String getAction();
 
-    void handle(WebSocketSession session, JsonNode data) throws Exception;
+    void sendMessage(WebSocketSession session, Object data);
 
+    void handle(WebSocketSession session, JsonNode data) throws Exception;
     boolean mustBeAuthed();
 }

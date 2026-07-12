@@ -19,26 +19,41 @@ public class JwtService {
     private final Logger LOGGER = LogManager.getLogger(JwtService.class);
 
     private final SecretKey key;
-    private final long expirationTime;
+    private final long refreshExpirationTime;
+    private final long accessExpirationTime;
 
     public JwtService(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration}") long expirationTime) {
+            @Value("${jwt.refresh_expiration}") long refreshExpirationTime,
+            @Value("${jwt.access_expiration}") long accessExpirationTime) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.expirationTime = expirationTime;
+        this.refreshExpirationTime = refreshExpirationTime;
+        this.accessExpirationTime = accessExpirationTime;
     }
 
-    public String generateToken(String playerId) {
+    public String generateRefreshToken(String playerId) {
         return Jwts.builder()
                 .subject(playerId)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expirationTime))
+                .expiration(new Date(System.currentTimeMillis() + refreshExpirationTime))
                 .signWith(key)
                 .compact();
     }
 
-    public String validateTokenAndGetPlayerId(String token) {
+    public String generateAccessToken(String playerId) {
+        return Jwts.builder()
+                .subject(playerId)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessExpirationTime))
+                .signWith(key)
+                .compact();
+    }
+
+    public String validateRefreshTokenAndGetPlayerId(String token) {
         try {
+            if (token == null || token.isEmpty())
+                return null;
+
             Claims payload = Jwts.parser()
                     .verifyWith(key)
                     .build()
@@ -46,7 +61,24 @@ public class JwtService {
                     .getPayload();
             return payload.getSubject();
         }catch(Exception e) {
-            LOGGER.error(TraceUtils.printStackTrace(e));
+            LOGGER.debug(e);
+            return null;
+        }
+    }
+
+    public String validateAccessToken(String token) {
+        try {
+            if (token == null || token.isEmpty())
+                return null;
+
+            Claims payload = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return payload.getSubject();
+        }catch(Exception e) {
+            LOGGER.debug(e);
             return null;
         }
     }
