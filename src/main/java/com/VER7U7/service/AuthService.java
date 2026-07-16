@@ -71,6 +71,9 @@ public class AuthService {
         if (!passwordEncoder.matches(password, account.get().getPassword()))
             return null;
 
+        WebSocketSession session = sessionManager.getPlayerSession(account.get().getId());
+        sessionManager.kick(session, new ResultStatus("auth_another_login"));
+
         return account.get();
     }
 
