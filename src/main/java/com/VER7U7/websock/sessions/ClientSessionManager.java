@@ -1,8 +1,7 @@
 package com.VER7U7.websock.sessions;
 
-import com.VER7U7.dto.Result;
-import com.VER7U7.dto.ResultStatus;
-import com.VER7U7.models.PlayerAccount;
+import com.VER7U7.dto.client.StatusResponse;
+import com.VER7U7.dto.common.WsMessage;
 import com.VER7U7.utils.TraceUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -18,8 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 @Component
-public class SessionManager {
-    private final Logger LOGGER = LogManager.getLogger(SessionManager.class);
+public class ClientSessionManager {
+    private final Logger LOGGER = LogManager.getLogger(ClientSessionManager.class);
 
     private final ConcurrentMap<Long, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
@@ -41,6 +40,17 @@ public class SessionManager {
         return sessions.containsValue(session);
     }
 
+
+    /**
+     * Sends a text payload to a specific player via their active WebSocket session.
+     * <p>
+     * Note: If an {@link IOException} occurs during transmission, the error is logged
+     * internally, but no exception is propagated to the caller.
+     *
+     * @param playerId the ID of the target player
+     * @param payload the text message content to be sent
+     * @throws SocketException if the player is not connected or their session is closed
+     * */
     public void sendToPlayer(Long playerId, String payload) throws SocketException {
         WebSocketSession session = sessions.get(playerId);
 
@@ -55,6 +65,15 @@ public class SessionManager {
         }
     }
 
+    /**
+     * Sends an object payload to the provided session in {@code JSON} format.
+     * <p>
+     * Note: If an {@link Exception} occurs during transmission, the error is logged
+     * internally, but no exception is propagated to the caller.
+     *
+     * @param session the {@link WebSocketSession} assigned to the client
+     * @param payload the object to be serialized into {@code JSON} format
+     * */
     public void sendObject(WebSocketSession session, Object payload) {
         if (session != null && session.isOpen()) {
             try {
@@ -66,10 +85,19 @@ public class SessionManager {
         }
     }
 
-    public void kick(WebSocketSession session, Object message) {
+    /**
+     * Disconnects the client via their WebSocket session by sending a closure reason message.
+     * <p>
+     * Note: If an {@link Exception} occurs during transmission, the error is logged
+     *      internally, but no exception is propagated to the caller.
+     *
+     * @param session the {@link WebSocketSession} assigned to the client
+     * @param message the reason object to be serialized into {@code JSON} format
+     * */
+    public void kick(WebSocketSession session, StatusResponse message) {
         if (session != null && session.isOpen()) {
             try {
-                sendObject(session, new Result("LOGOUT", message));
+                sendObject(session, new WsMessage<>("LOGOUT", message));
                 session.close(CloseStatus.GOING_AWAY);
             }catch (Exception e) {
                 LOGGER.error("Error kicking user: {}", e.getMessage());

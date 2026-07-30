@@ -1,16 +1,14 @@
 package com.VER7U7.websock.handlers;
 
-import com.VER7U7.dto.Result;
-import com.VER7U7.dto.ResultStatus;
-import com.VER7U7.models.PlayerAccount;
-import com.VER7U7.repo.PlayerAccountRepository;
-import com.VER7U7.service.AuthService;
-import com.VER7U7.websock.sessions.SessionManager;
+import com.VER7U7.dto.client.StatusResponse;
+import com.VER7U7.dto.common.WsMessage;
+import com.VER7U7.service.ClientAuthService;
+import com.VER7U7.websock.handlers.client.GameActionHandler;
+import com.VER7U7.websock.sessions.ClientSessionManager;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -29,26 +27,30 @@ public class SocketCoordinator extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, GameActionHandler> handlers;
-    //private final Map<WebSocketSession, List<String>> requestBuffer = new LinkedHashMap<>(); //need for buffering all request when need refresh auth
     private final ConcurrentMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
-    @Autowired
-    private PlayerAccountRepository accountRepos;
+    private final ClientAuthService clientAuthService;
 
-    private AuthService authService;
-
-    private final SessionManager sessionManager;
+    private final ClientSessionManager sessionManager;
 
     public SocketCoordinator(
             List<GameActionHandler> handlerList,
-            SessionManager sessions,
-            AuthService authService) {
-        this.authService = authService;
+            ClientSessionManager sessions,
+            ClientAuthService clientAuthService) {
+        this.clientAuthService = clientAuthService;
         this.handlers = handlerList.stream()
                 .collect(Collectors.toMap(GameActionHandler::getAction, Function.identity()));
         this.sessionManager = sessions;
     }
 
+
+    /**
+     * Handles incoming WebSocket text messages from client.
+     *
+     * @param session the {@link WebSocketSession} assigned to the client
+     * @param message the {@link TextMessage} containing the request data in {@code JSON} format
+     * @throws Exception if an error occurs during message processing
+     * */
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception{
         String payload = message.getPayload();
@@ -67,14 +69,14 @@ public class SocketCoordinator extends TextWebSocketHandler {
             if (handler != null) {
                 if (handler.mustBeAuthed()) {
                     if (!jsonNode.has("accessToken")) {
-                        sessionManager.sendObject(session, new Result("AUTH_RESULT", new ResultStatus("need_auth")));
+                        sessionManager.sendObject(session, new WsMessage<>("AUTH_RESULT", new StatusResponse("need_auth")));
                         return;
                     }
 
                     String accessToken = jsonNode.get("accessToken").asText();
 
-                    if (!authService.validateAccessToken(session, accessToken)) {
-                        sessionManager.sendObject(session, new Result("AUTH_RESULT", new ResultStatus("need_refresh_token")));
+                    if (!clientAuthService.validateAccessToken(session, accessToken)) {
+                        sessionManager.sendObject(session, new WsMessage<>("AUTH_RESULT", new StatusResponse("need_refresh_token")));
                         return;
                     }
                 }
@@ -111,14 +113,6 @@ public class SocketCoordinator extends TextWebSocketHandler {
     private boolean needRefreshToken() {
         return false;
     }
-
-    /*private void addRequestToBuffer(WebSocketSession session, String payload) {
-        if (requestBuffer.containsKey(session))
-            requestBuffer.get(session).add(payload);
-        else {
-            requestBuffer.put(session, new ArrayList<>(List.of(payload)));
-        }
-    }*/
 
     private boolean isAuthed(WebSocketSession session) {
         return session.getAttributes().get("playerId") != null;

@@ -31,6 +31,13 @@ public class JwtService {
         this.accessExpirationTime = accessExpirationTime;
     }
 
+
+    /**
+     * Generates a refresh token and embeds the playerID into its subject.
+     *
+     * @param playerId the player ID from database in {@code String} format
+     * @return the generated JWT access token with the configured expiration time
+     * */
     public String generateRefreshToken(String playerId) {
         return Jwts.builder()
                 .subject(playerId)
@@ -40,6 +47,12 @@ public class JwtService {
                 .compact();
     }
 
+    /**
+     * Generates an access token and embeds the playerID into its subject.
+     *
+     * @param playerId the player ID from database in {@code String} format
+     * @return the generated JWT access token with the configured expiration time
+     * */
     public String generateAccessToken(String playerId) {
         return Jwts.builder()
                 .subject(playerId)
@@ -49,6 +62,14 @@ public class JwtService {
                 .compact();
     }
 
+
+    /**
+     * Validates the refresh token and extracts the player ID form it.
+     *
+     * @param token the JWT refresh token issued to client
+     * @return the player ID if validation is successful; {@code null} if the refresh token is invalid,
+     *         expired, or empty.
+     * */
     public String validateRefreshTokenAndGetPlayerId(String token) {
         try {
             if (token == null || token.isEmpty())
@@ -66,6 +87,13 @@ public class JwtService {
         }
     }
 
+    /**
+     * Validates the access token and extracts the player ID from it.
+     *
+     * @param token the JWT access token issued to client
+     * @return the playerID if validation successful; {@code null} if the refresh token is invalid,
+     *         expired, or empty
+     * */
     public String validateAccessToken(String token) {
         try {
             if (token == null || token.isEmpty())
