@@ -20,22 +20,24 @@ import java.util.Optional;
 
 @Service
 public class ClientAuthService {
-    @Autowired
-    private PlayerAccountRepository playerAccountRepository;
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
 
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
-
+    private final PlayerAccountRepository playerAccountRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ClientSessionManager sessionManager;
 
-
-    public ClientAuthService(JwtService jwtService, ClientSessionManager sessionManager) {
+    public ClientAuthService(
+            PlayerAccountRepository playerAccountRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            BCryptPasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            ClientSessionManager sessionManager) {
+        this.playerAccountRepository = playerAccountRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.sessionManager = sessionManager;
-
     }
 
 
@@ -50,15 +52,15 @@ public class ClientAuthService {
      *        {@link BadCredentialType#BadPassword} if the password does not meet complexity rules
      * */
     public PlayerAccount createAccount(String name, String password) throws BadCredentialException {
-        Optional<PlayerAccount> account = playerAccountRepository.findByPlayerNickName(name);
-        if (account.isPresent())
-            throw new BadCredentialException(BadCredentialType.LoginIsExists);
-
         if (name == null || name.length() < 3)
             throw new BadCredentialException(BadCredentialType.BadLogin);
 
         if (password == null || password.length() < 8)
             throw new BadCredentialException(BadCredentialType.BadPassword);
+
+        Optional<PlayerAccount> account = playerAccountRepository.findByPlayerNickName(name);
+        if (account.isPresent())
+            throw new BadCredentialException(BadCredentialType.LoginIsExists);
 
         String encodedPassword = passwordEncoder.encode(password);
 

@@ -10,10 +10,12 @@ public class BadCredentialException extends Exception{
 
     public BadCredentialException(BadCredentialType type) {
         super(type.name());
+        badCredentialType = type;
     }
 
     public BadCredentialException(BadCredentialType type, Throwable cause) {
         super(type.name(), cause);
+        badCredentialType = type;
     }
 
     public BadCredentialException(Throwable cause) {
